@@ -189,7 +189,7 @@ def convert_size(size_bytes):
 ## A value under 0 represents a 'halt'.
 ## A value at 1 or bigger represents 100%
 def update_progress(progress):
-    barLength = 30 # Modify this to change the length of the progress bar
+    barLength = 50 # Modify this to change the length of the progress bar
     status = ""
     if isinstance(progress, int):
         progress = float(progress)

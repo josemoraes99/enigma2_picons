@@ -12,7 +12,7 @@ import ast
 import threading
 import time
 
-__version__             = "0.2.0"
+__version__             = "0.2.1"
 __checkupdate__         = True
 __updateurl__           = "https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py"
 __e2dir__               = "/etc/enigma2/"
@@ -301,9 +301,12 @@ def downloadPicons(f):
     logging.info( "Enviando lista dos picons" )
     global __progress__
     piconsList = []
+    numDownloads = 0
+
     for file in f:
         # print(file)
         piconsList.append(file[1])
+        numDownloads += 1
 
     data = {'listChannel': piconsList}
     data = json.dumps( data )
@@ -317,7 +320,6 @@ def downloadPicons(f):
     logging.info( "Download dos arquivos" )
     
     threads = []
-    numDownloads = 0
 
     update_progress(float(0))
 
@@ -330,7 +332,8 @@ def downloadPicons(f):
                 t = threading.Thread(target=downloadFile, args=(l[1], file[0]))
                 t.start()
                 threads.append(t)
-                numDownloads += 1
+                while threading.active_count() > 20:
+                    time.sleep(0.1)
 
     while __progress__ < numDownloads:
         if threading.active_count() == 1:

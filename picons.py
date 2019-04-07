@@ -11,17 +11,10 @@ import urllib2
 import ast
 import threading
 import time
-# import datetime
-# import urllib
-# import zipfile
-# import StringIO
-# import sys
-# import math
-# , sys
 
-__version__             = "0.1.5"
+__version__             = "0.2.0"
 __checkupdate__         = True
-__updateurl__           = "https://prt01.000webhostapp.com/picons_script/picons.py"
+__updateurl__           = "https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py"
 __e2dir__               = "/etc/enigma2/"
 __lambedbFile__         = __e2dir__ + 'lamedb5'
 __urlPicons__           = "https://hk319yfwbl.execute-api.sa-east-1.amazonaws.com/prod"
@@ -29,7 +22,7 @@ __localPiconDirectory__ = "/usr/share/enigma2/picon/"
 __bouquetGroup__        = ["bouquets.radio", "bouquets.tv"]
 __ignoreChannels__      = ['SID 0x']
 
-__progress__ = 0
+__progress__            = 0
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
@@ -319,7 +312,7 @@ def downloadPicons(f):
     fil = urllib2.urlopen(req)
     response = json.load(fil)
     fil.close()
-    listURL = ast.literal_eval(response)
+    listURL = ast.literal_eval(response)  # procurar alternativa
 
     logging.info( "Download dos arquivos" )
     

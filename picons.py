@@ -12,7 +12,7 @@ import ast
 import threading
 import time
 
-__version__             = "0.2.1"
+__version__             = "0.2.2"
 __checkupdate__         = True
 __updateurl__           = "https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py"
 __e2dir__               = "/etc/enigma2/"
@@ -332,7 +332,7 @@ def downloadPicons(f):
                 t = threading.Thread(target=downloadFile, args=(l[1], file[0]))
                 t.start()
                 threads.append(t)
-                while threading.active_count() > 20:
+                while threading.active_count() > 5:
                     time.sleep(0.1)
 
     while __progress__ < numDownloads:

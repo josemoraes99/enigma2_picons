@@ -79,7 +79,8 @@ Compares two version number strings
     # dl the first 256 bytes and parse it for version number
     try:
         http_stream = urllib.urlopen(dl_url)
-        update_file = http_stream.read(256)
+        # update_file = http_stream.read(256)
+        update_file = http_stream.read(300)
         http_stream.close()
 
     except IOError, (errno, strerror):

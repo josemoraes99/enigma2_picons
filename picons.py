@@ -13,7 +13,7 @@ import threading
 import time
 import uuid
 
-__version__             = "0.2.2"
+__version__             = "0.2.3"
 __checkupdate__         = True
 __updateurl__           = "https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py"
 __e2dir__               = "/etc/enigma2/"
@@ -306,7 +306,7 @@ def downloadPicons(f):
 
     for file in f:
         # print(file)
-        if file.strip() != "":
+        if file[1].strip() != "":
             piconsList.append(file[1])
             numDownloads += 1
 

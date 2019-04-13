@@ -11,6 +11,7 @@ import urllib2
 import ast
 import threading
 import time
+import uuid
 
 __version__             = "0.2.2"
 __checkupdate__         = True
@@ -305,10 +306,13 @@ def downloadPicons(f):
 
     for file in f:
         # print(file)
-        piconsList.append(file[1])
-        numDownloads += 1
+        if file.strip() != "":
+            piconsList.append(file[1])
+            numDownloads += 1
 
-    data = {'listChannel': piconsList}
+    uuidOne = uuid.getnode()
+    piconsList = list(dict.fromkeys(piconsList))
+    data = {'src': 'e2','node': uuidOne,'listChannel': piconsList}
     data = json.dumps( data )
     # print(data)
     req = urllib2.Request(__urlPicons__, data, {'Content-Type': 'application/json'})

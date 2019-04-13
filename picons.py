@@ -351,9 +351,7 @@ def downloadPicons(f):
 
     map(lambda t: t.join(), threads)
 
-
-
-def main():
+def iniciaDownloadPicons():
     if __checkupdate__:
         updateReturn = update(__updateurl__)
         if updateReturn:
@@ -373,6 +371,9 @@ def main():
 
     logging.info( "Pronto." )
 
+def main():
+    iniciaDownloadPicons
+    
 if __name__ == "__main__":
    # stuff only to run when not called via 'import' here
    main()

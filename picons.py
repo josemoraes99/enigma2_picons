@@ -12,8 +12,11 @@ import ast
 import threading
 import time
 import uuid
+import urllib
+import re
+from subprocess import call
 
-__version__             = "0.2.3"
+__version__             = "0.2.4"
 __checkupdate__         = True
 __updateurl__           = "https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py"
 __e2dir__               = "/etc/enigma2/"
@@ -44,9 +47,6 @@ Attempts to download the update url in order to find if an update is needed.
 If an update is needed, the current script is backed up and the update is
 saved in its place.
 """
-    import urllib
-    import re
-    from subprocess import call
     def compare_versions(vA, vB):
         """
 Compares two version number strings
@@ -351,22 +351,27 @@ def downloadPicons(f):
     map(lambda t: t.join(), threads)
 
 
-if __checkupdate__:
-    updateReturn = update(__updateurl__)
-    if updateReturn:
-        logging.info( "Reiniciando script" )
-        python = sys.executable
-        os.execl(python, python, *sys.argv)
 
-logging.info( "version " + __version__ )
+def main():
+    if __checkupdate__:
+        updateReturn = update(__updateurl__)
+        if updateReturn:
+            logging.info( "Reiniciando script" )
+            python = sys.executable
+            os.execl(python, python, *sys.argv)
 
-channelList = lerBouquetGroup( __bouquetGroup__ )
+    logging.info( "version " + __version__ )
 
-lameDb = lerLameDb(__lambedbFile__)
+    channelList = lerBouquetGroup( __bouquetGroup__ )
 
-listFiles = gerarLista(channelList,lameDb,__ignoreChannels__)
+    lameDb = lerLameDb(__lambedbFile__)
 
-downloadPicons(listFiles)
+    listFiles = gerarLista(channelList,lameDb,__ignoreChannels__)
 
-logging.info( "Pronto." )
+    downloadPicons(listFiles)
 
+    logging.info( "Pronto." )
+
+if __name__ == "__main__":
+   # stuff only to run when not called via 'import' here
+   main()

@@ -16,7 +16,7 @@ import urllib
 import re
 from subprocess import call
 
-__version__             = "0.2.4"
+__version__             = "0.2.5"
 __checkupdate__         = True
 __updateurl__           = "https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py"
 __e2dir__               = "/etc/enigma2/"
@@ -30,8 +30,6 @@ __progress__            = 0
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
-
-logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
 
 if len(sys.argv) > 1:
     for ar in sys.argv:
@@ -372,6 +370,7 @@ def iniciaDownloadPicons():
     logging.info( "Pronto." )
 
 def main():
+    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
     iniciaDownloadPicons()
 
 if __name__ == "__main__":

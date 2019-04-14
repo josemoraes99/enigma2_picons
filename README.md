@@ -1,13 +1,13 @@
 # enigma2_picons
 Script para download de picons para o enigma2
 
-## H2 Instalação
+## Instalação
 
-Entrar no terminal e fazer o downloaddo script:
+Entrar no terminal e fazer o download do script:
 ```
 wget https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py
 ```
-## H2 Para executar:
+## Para executar:
 ```
 python picons.py
 ```

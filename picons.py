@@ -16,7 +16,7 @@ import urllib
 import re
 from subprocess import call
 
-__version__             = "0.2.5"
+__version__             = "0.2.6"
 __checkupdate__         = True
 __updateurl__           = "https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py"
 __e2dir__               = "/etc/enigma2/"
@@ -25,7 +25,7 @@ __urlPicons__           = "https://hk319yfwbl.execute-api.sa-east-1.amazonaws.co
 __localPiconDirectory__ = "/usr/share/enigma2/picon/"
 __bouquetGroup__        = ["bouquets.radio", "bouquets.tv"]
 __ignoreChannels__      = ['SID 0x']
-
+__asModule__            = True
 __progress__            = 0
 
 reload(sys)
@@ -112,6 +112,8 @@ Compares two version number strings
 
     # dl, backup, and save the updated script
     app_path = os.path.realpath(sys.argv[0])
+    if __asModule__ == True:
+        app_path = __file__
 
     if not os.access(app_path, os.W_OK):
         logging.info( "Cannot update -- unable to write to %s" % app_path )
@@ -370,6 +372,7 @@ def iniciaDownloadPicons():
     logging.info( "Pronto." )
 
 def main():
+    __asModule__ = False
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
     iniciaDownloadPicons()
 

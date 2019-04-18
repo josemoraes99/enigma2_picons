@@ -14,7 +14,7 @@ import time
 import uuid
 import urllib
 
-__version__             = "0.2.8"
+__version__             = "0.2.9"
 __checkupdate__         = True
 __updateurl__           = "https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py"
 __e2dir__               = "/etc/enigma2/"
@@ -290,9 +290,11 @@ def lerLameDb(f):
                 canalclean = re.sub(re.compile('\W'), '', ''.join(c.lower() for c in unicodedata.normalize('NFKD', nomeCanal.replace("+", "mais")).encode('ascii', 'ignore') if not c.isspace()))
 
                 filenameE2 = idChannel.replace(":", "_").upper() + '.png'
-                # print filenameE2 + " " + canalclean
+                if canalclean != "":
+                    # print filenameE2 + " " + canalclean
 
-                finalList.append([filenameE2,canalclean])
+                    finalList.append([filenameE2,canalclean])
+
         return finalList
     else:
         logging.info( "Arquivo nao encontrado" )
@@ -359,14 +361,16 @@ def lerArquivoUserBouquet(f):
 def remove_dup(a):
     finalList = []
     for item in a:
+        # print item
         found = False
         for curItem in finalList:
             if item[0] == curItem[0] and item[1] == curItem[1]:
+                # print item
                 found = True
 
         if found == False:
             finalList.append(item)
-
+    # print finalList
     return finalList
 
 def iniciaDownloadPicons():
@@ -387,7 +391,7 @@ def iniciaDownloadPicons():
 
     listMerged = remove_dup(listMerged)
 
-    downloadPicons(listFiles)
+    downloadPicons(listMerged)
 
     logging.info( "Pronto." )
 

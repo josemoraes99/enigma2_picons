@@ -14,13 +14,14 @@ import time
 import uuid
 import urllib
 
-__version__             = "0.2.7"
+__version__             = "0.2.8"
 __checkupdate__         = True
 __updateurl__           = "https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py"
 __e2dir__               = "/etc/enigma2/"
 __lambedbFile__         = __e2dir__ + 'lamedb'
 __urlPicons__           = "https://hk319yfwbl.execute-api.sa-east-1.amazonaws.com/prod"
 __localPiconDirectory__ = "/usr/share/enigma2/picon/"
+__bouquetGroup__        = ["bouquets.radio", "bouquets.tv"]
 # __asModule__            = True
 __progress__            = 0
 
@@ -297,6 +298,76 @@ def lerLameDb(f):
         logging.info( "Arquivo nao encontrado" )
         exit()
 
+def lerBouquetGroup(g):
+    bResult = []
+    for b in g:
+        bResult = bResult + lerArquivoBouquet( b )
+
+    listChan = []
+    for f in bResult:
+        listChan = listChan + lerArquivoUserBouquet( f )
+
+    listChClean = []
+    for l in listChan:
+        if l not in listChClean:
+            listChClean.append(l)
+
+    # print listChClean
+    return listChClean
+
+def lerArquivoBouquet(f):
+    fileR = __e2dir__ + f
+    logging.info( "Lendo arquivo " + fileR )
+    if os.path.isfile( fileR ):
+        with io.open( fileR , encoding='utf-8', errors='ignore') as f:
+            resp = []
+            for line in f:
+                if line.startswith( "#SERVICE" ):
+                    resp.append( line.split('BOUQUET "')[1].split('" ')[0] )
+            return resp
+
+    else:
+        logging.info( "Arquivo nao encontrado" )
+        exit()
+
+def lerArquivoUserBouquet(f):
+    excludeBouquets=["1:0:CA","1:320:0"] # tres primeiros
+    fileR = __e2dir__ + f
+    channels = []
+    logging.info( "Lendo arquivo " + fileR )
+    if os.path.isfile( fileR ):
+        with io.open( fileR , encoding='utf-8', errors='ignore') as f:
+            resp = []
+            for line in f:
+                if line.startswith( "#SERVICE" ):
+                    lineSpl = line.split('#SERVICE ')[1].strip()
+                    if "::" in lineSpl:
+                        tmpChannel = lineSpl.split("::")
+                        canalclean = re.sub(re.compile('\W'), '', ''.join(c.lower() for c in unicodedata.normalize('NFKD', tmpChannel[1].replace("+", "mais")).encode('ascii', 'ignore') if not c.isspace()))
+
+                        filenameE2 = tmpChannel[0].replace(":", "_").upper() + '.png'
+                        # print filenameE2 + " " + canalclean
+                        # print lineSpl
+                        channels.append([filenameE2,canalclean])
+
+                    # srvc = ":".join(lineSpl.split(":", 10)[:10])
+                    # strSrvc = ":".join(srvc.split(":", 3)[:3])
+                    # if not strSrvc in excludeBouquets:
+                    #     channels.append(srvc)
+            return channels
+
+def remove_dup(a):
+    finalList = []
+    for item in a:
+        found = False
+        for curItem in finalList:
+            if item[0] == curItem[0] and item[1] == curItem[1]:
+                found = True
+
+        if found == False:
+            finalList.append(item)
+
+    return finalList
 
 def iniciaDownloadPicons():
     if __checkupdate__:
@@ -309,6 +380,12 @@ def iniciaDownloadPicons():
     logging.info( "version " + __version__ )
 
     listFiles = lerLameDb(__lambedbFile__)
+
+    channelList = lerBouquetGroup( __bouquetGroup__ )
+
+    listMerged = listFiles + channelList
+
+    listMerged = remove_dup(listMerged)
 
     downloadPicons(listFiles)
 

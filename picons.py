@@ -13,19 +13,15 @@ import threading
 import time
 import uuid
 import urllib
-import re
-from subprocess import call
 
-__version__             = "0.2.6"
+__version__             = "0.2.7"
 __checkupdate__         = True
 __updateurl__           = "https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py"
 __e2dir__               = "/etc/enigma2/"
-__lambedbFile__         = __e2dir__ + 'lamedb5'
+__lambedbFile__         = __e2dir__ + 'lamedb'
 __urlPicons__           = "https://hk319yfwbl.execute-api.sa-east-1.amazonaws.com/prod"
 __localPiconDirectory__ = "/usr/share/enigma2/picon/"
-__bouquetGroup__        = ["bouquets.radio", "bouquets.tv"]
-__ignoreChannels__      = ['SID 0x']
-__asModule__            = True
+# __asModule__            = True
 __progress__            = 0
 
 reload(sys)
@@ -36,7 +32,7 @@ if len(sys.argv) > 1:
         if ar == 'debug':
             __checkupdate__ = False
             __e2dir__ = "etc/"
-            __lambedbFile__ = __e2dir__ + 'lamedb5'
+            __lambedbFile__ = __e2dir__ + 'lamedb'
             __localPiconDirectory__="picon/"
 
 def update(dl_url, force_update=False):
@@ -112,8 +108,8 @@ Compares two version number strings
 
     # dl, backup, and save the updated script
     app_path = os.path.realpath(sys.argv[0])
-    if __asModule__ == True:
-        app_path = __file__
+    # if __asModule__ == True:
+    #     app_path = __file__
 
     if not os.access(app_path, os.W_OK):
         logging.info( "Cannot update -- unable to write to %s" % app_path )
@@ -209,87 +205,6 @@ def update_progress(progress):
     sys.stdout.write(text)
     sys.stdout.flush()
 
-def lerBouquetGroup(g):
-    bResult = []
-    for b in g:
-        bResult = bResult + lerArquivoBouquet( b )
-
-    listChan = []
-    for f in bResult:
-        listChan = listChan + lerArquivoUserBouquet( f )
-
-    listChClean = []
-    for l in listChan:
-        if l not in listChClean:
-            listChClean.append(l)
-
-    return listChClean
-
-def lerArquivoBouquet(f):
-    fileR = __e2dir__ + f
-    logging.info( "Lendo arquivo " + fileR )
-    if os.path.isfile( fileR ):
-        with io.open( fileR , encoding='utf-8', errors='ignore') as f:
-            resp = []
-            for line in f:
-                if line.startswith( "#SERVICE" ):
-                    resp.append( line.split('BOUQUET "')[1].split('" ')[0] )
-            return resp
-
-    else:
-        logging.info( "Arquivo nao encontrado" )
-        exit()
-
-def lerArquivoUserBouquet(f):
-    excludeBouquets=["1:0:CA","1:320:0"] # tres primeiros
-    fileR = __e2dir__ + f
-    channels = []
-    logging.info( "Lendo arquivo " + fileR )
-    if os.path.isfile( fileR ):
-        with io.open( fileR , encoding='utf-8', errors='ignore') as f:
-            resp = []
-            for line in f:
-                if line.startswith( "#SERVICE" ):
-                    lineSpl = line.split('#SERVICE ')[1]
-                    srvc = ":".join(lineSpl.split(":", 10)[:10])
-                    strSrvc = ":".join(srvc.split(":", 3)[:3])
-                    if not strSrvc in excludeBouquets:
-                        channels.append(srvc)
-            return channels
-
-def lerLameDb(f):
-    logging.info( "Lendo arquivo " + f )
-    if os.path.isfile(f):
-        with io.open(f, encoding='utf-8', errors='ignore') as f:
-            lDb = []
-            for line in f:
-                if line.startswith( "s:" ):
-                    chName = line.split(",")[1].strip().strip('"')
-                    if chName != '':
-                        lDb.append(line.strip())
-            return lDb
-    else:
-        logging.info( "Arquivo nao encontrado" )
-        exit()
-
-def gerarLista(c,l,ign):
-    logging.info( "Processando lista" )
-    chan =[]
-    for item in c:
-        for lis in l:
-            lt = lis.split(",")[0].upper()
-            if item.split(":")[3] == lt.split(":")[1].lstrip("0") and item.split(":")[5] == lt.split(":")[4].lstrip("0"):
-                nomeCanal = lis.split(",")[1].lstrip('""').rstrip('""')
-                for i in ign:
-                    if i not in nomeCanal:
-                        canalclean = re.sub(re.compile('\W'), '', ''.join(c.lower() for c in unicodedata.normalize('NFKD', lis.split(",")[1].replace("+", "mais")).encode('ascii', 'ignore') if not c.isspace()))
-                        # canalFinal = 'canal' + canalclean + '.png'
-
-                        filenameE2 = item.replace(":", "_").upper() + '.png'
-                        chan.append([filenameE2,canalclean])
-
-    return chan
-
 def downloadFile(url,file):
     global __progress__
     # print(file + " " + url)
@@ -351,6 +266,38 @@ def downloadPicons(f):
 
     map(lambda t: t.join(), threads)
 
+def lerLameDb(f):
+    logging.info( "Lendo arquivo " + f )
+    if os.path.isfile(f):
+        lDb = []
+        finalList = []
+        with io.open(f, encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                lDb.append(line)
+
+        for x in range(0, len(lDb)):
+            # print x
+            if lDb[x].startswith( "p:" ):
+                nomeCanal = lDb[x - 1].strip()
+                tmpId = lDb[x - 2].strip().split(":")
+                oPosit = format( int( tmpId[4] ),'x' )
+                if oPosit == "80":
+                    oPosit = "1"
+
+                idChannel = "1:0:" + oPosit + ":" + tmpId[0].lstrip("0") + ":" + tmpId[2].lstrip("0") + ":" + tmpId[3].lstrip("0") + ":" + tmpId[1] + ":0:0:0"
+
+                canalclean = re.sub(re.compile('\W'), '', ''.join(c.lower() for c in unicodedata.normalize('NFKD', nomeCanal.replace("+", "mais")).encode('ascii', 'ignore') if not c.isspace()))
+
+                filenameE2 = idChannel.replace(":", "_").upper() + '.png'
+                # print filenameE2 + " " + canalclean
+
+                finalList.append([filenameE2,canalclean])
+        return finalList
+    else:
+        logging.info( "Arquivo nao encontrado" )
+        exit()
+
+
 def iniciaDownloadPicons():
     if __checkupdate__:
         updateReturn = update(__updateurl__)
@@ -361,21 +308,16 @@ def iniciaDownloadPicons():
 
     logging.info( "version " + __version__ )
 
-    channelList = lerBouquetGroup( __bouquetGroup__ )
-
-    lameDb = lerLameDb(__lambedbFile__)
-
-    listFiles = gerarLista(channelList,lameDb,__ignoreChannels__)
+    listFiles = lerLameDb(__lambedbFile__)
 
     downloadPicons(listFiles)
 
     logging.info( "Pronto." )
 
 def main():
-    __asModule__ = False
+    # __asModule__ = False
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
     iniciaDownloadPicons()
 
 if __name__ == "__main__":
-   # stuff only to run when not called via 'import' here
-   main()
+    main()

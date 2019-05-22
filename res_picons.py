@@ -16,11 +16,26 @@ import urllib
 from functools import wraps
 
 __version__             = "0.2.11"
+# __checkupdate__         = True
+# __updateurl__           = "https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py"
+# __e2dir__               = "/etc/enigma2/"
+# __lambedbFile__         = __e2dir__ + 'lamedb'
+# __urlPicons__           = "https://hk319yfwbl.execute-api.sa-east-1.amazonaws.com/prod"
+# __localPiconDirectory__ = "/usr/share/enigma2/picon/"
+# __bouquetGroup__        = ["bouquets.radio", "bouquets.tv"]
+# __asModule__            = True
 __progress__            = 0
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+# if len(sys.argv) > 1:
+#     for ar in sys.argv:
+#         if ar == 'debug':
+#             __checkupdate__ = False
+#             __e2dir__ = "etc/"
+#             __lambedbFile__ = __e2dir__ + 'lamedb'
+#             __localPiconDirectory__="picon/"
 CONFIG = {
     'updateurl': "https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py",
     'urlPicons': "https://hk319yfwbl.execute-api.sa-east-1.amazonaws.com/prod",
@@ -177,14 +192,14 @@ Compares two version number strings
     logging.info( "(previous version backed up to %s)" % (backup_path) )
     return True
 
-# def convert_size(size_bytes):
-#     if size_bytes == 0:
-#         return "0B"
-#     size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
-#     i = int(math.floor(math.log(size_bytes, 1024)))
-#     p = math.pow(1024, i)
-#     s = round(size_bytes / p, 2)
-#     return "%s %s" % (s, size_name[i])
+def convert_size(size_bytes):
+    if size_bytes == 0:
+        return "0B"
+    size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return "%s %s" % (s, size_name[i])
 
 # update_progress() : Displays or updates a console progress bar
 ## Accepts a float between 0 and 1. Any int will be converted to a float.
@@ -203,11 +218,9 @@ def update_progress(progress):
         status = "Halt...\r\n"
     if progress >= 1:
         progress = 1
-        status = "\r\n"
-        # status = "Done...\r\n"
+        status = "Done...\r\n"
     block = int(round(barLength*progress))
-    text = "\rProgresso: [{0}] {1}% {2}".format( "="*block + " "*(barLength-block), int(progress*100), status)
-    # text = "\rPercent: [{0}] {1}% {2}".format( "="*block + " "*(barLength-block), int(progress*100), status)
+    text = "\rPercent: [{0}] {1}% {2}".format( "="*block + " "*(barLength-block), int(progress*100), status)
     sys.stdout.write(text)
     sys.stdout.flush()
 
@@ -344,6 +357,8 @@ def lerLameDb(f):
 
                 filenameE2 = idChannel.replace(":", "_").upper() + '.png'
                 if canalclean != "":
+                    # print filenameE2 + " " + canalclean
+
                     finalList.append([filenameE2,canalclean])
 
         return finalList
@@ -366,6 +381,7 @@ def lerBouquetGroup(conf):
         if l not in listChClean:
             listChClean.append(l)
 
+    # print listChClean
     return listChClean
 
 def lerArquivoBouquet(f, conf):
@@ -399,23 +415,40 @@ def lerArquivoUserBouquet(f, conf):
                         canalclean = re.sub(re.compile('\W'), '', ''.join(c.lower() for c in unicodedata.normalize('NFKD', tmpChannel[1].replace("+", "mais")).encode('ascii', 'ignore') if not c.isspace()))
 
                         filenameE2 = tmpChannel[0].replace(":", "_").upper() + '.png'
+                        # print filenameE2 + " " + canalclean
+                        # print lineSpl
                         channels.append([filenameE2,canalclean])
 
+                    # srvc = ":".join(lineSpl.split(":", 10)[:10])
+                    # strSrvc = ":".join(srvc.split(":", 3)[:3])
+                    # if not strSrvc in excludeBouquets:
+                    #     channels.append(srvc)
             return channels
 
 def remove_duplicates(a):
     finalList = []
     for item in a:
+        # print item
         found = False
         for curItem in finalList:
             if item[0] == curItem[0] and item[1] == curItem[1]:
+                # print item
                 found = True
 
         if found == False:
             finalList.append(item)
+    # print finalList
     return finalList
 
 def iniciaDownloadPicons(conf):
+    # if __checkupdate__:
+    #     updateReturn = update(__updateurl__)
+    #     if updateReturn:
+    #         logging.info( "Reiniciando script" )
+    #         python = sys.executable
+    #         os.execl(python, python, *sys.argv)
+
+
     listFiles = lerLameDb( conf['lambedbFile'] )
 
     channelList = lerBouquetGroup( conf )
@@ -441,6 +474,7 @@ def main():
     groupDebug = parser.add_mutually_exclusive_group()
     groupDebug.add_argument('--dev', action='store_true', help = 'modo de testes')
     args = parser.parse_args()
+    # __asModule__ = False
 
     ckUpdates = True
     if args.no_update or args.dev:

@@ -8,14 +8,14 @@ import re
 import unicodedata
 import json
 import urllib2
-import ast
+# import ast
 import threading
 import time
 import uuid
 import urllib
 from functools import wraps
 
-__version__             = "0.2.11"
+__version__             = "0.2.12"
 __progress__            = 0
 
 reload(sys)
@@ -286,9 +286,13 @@ def downloadPicons(f, conf):
     # print(data)
     req = urllib2.Request( conf['urlPicons'], data, {'Content-Type': 'application/json'})
     fil = urllib2.urlopen(req)
-    response = json.load(fil)
+    # response = json.load(fil)
+    # print(response)
+    # data  = json.load(response)
+    # print(response)
+    # listURL = ast.literal_eval(response)  # procurar alternativa
+    listURL = json.load(fil)
     fil.close()
-    listURL = ast.literal_eval(response)  # procurar alternativa
 
     logging.info( "Download dos arquivos" )
     
@@ -306,7 +310,7 @@ def downloadPicons(f, conf):
                 t = threading.Thread(target=downloadFile, args=(l[1], filename))
                 t.start()
                 threads.append(t)
-                while threading.active_count() > 10:
+                while threading.active_count() > 15:
                     time.sleep(0.1)
 
     while __progress__ < numDownloads:

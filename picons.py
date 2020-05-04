@@ -15,7 +15,7 @@ import uuid
 import urllib
 from functools import wraps
 
-__version__             = "0.3.0"
+__version__             = "0.3.1"
 __progress__            = 0
 
 reload(sys)
@@ -30,7 +30,8 @@ CONFIG = {
     'bouquetGroup': ["bouquets.radio", "bouquets.tv"],
     'tvheadendAddress': 'http://localhost',
     'tvheadendPort': '9981',
-    'tvheadendPiconDirectory': '/home/root/tvheadend_picons/'
+    'tvheadendPiconDirectory': '/home/root/tvheadend_picons/',
+    'tvheadendChannelConfigDirectory': '/home/root/.hts/tvheadend/channel/config/'
 }
 
 DEV_CONFIG = {
@@ -42,7 +43,8 @@ DEV_CONFIG = {
     'bouquetGroup': CONFIG['bouquetGroup'],
     'tvheadendAddress': 'http://e2.lan',
     'tvheadendPort': '9981',
-    'tvheadendPiconDirectory': 'tvheadend_picons/'
+    'tvheadendPiconDirectory': 'tvheadend_picons/',
+    'tvheadendChannelConfigDirectory': 'etc/tvheadend/channel/config/'
 }
 
 def update(dl_url, force_update=False):
@@ -263,16 +265,6 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
 def urlopen_with_retry(url):
     return urllib2.urlopen(url)
 
-# def downloadFile(url,file):
-#     global __progress__
-#     # print(file + " " + url)
-#     # imgdata = urllib2.urlopen(url).read()
-#     imgdata = urlopen_with_retry(url).read()
-#     # img = Image.open(cStringIO.StringIO(imgdata))
-#     with open( file, 'wb') as f:  
-#         f.write(imgdata)
-#     __progress__ += 1
-
 def downloadFile(url, fileArr, conf):
     global __progress__
     imgdata = urlopen_with_retry(url).read()
@@ -292,63 +284,6 @@ def downloadFile(url, fileArr, conf):
                 f.write(imgdata)
 
     __progress__ += 1
-
-# def downloadPicons(f, conf):
-#     logging.info( "Enviando lista dos picons" )
-#     global __progress__
-#     piconsList = []
-#     numDownloads = 0
-
-#     for file in f:
-#         # print(file)
-#         if file[1].strip() != "":
-#             piconsList.append(file[1])
-#             numDownloads += 1
-
-#     uuidOne = uuid.getnode()
-#     piconsList = list(dict.fromkeys(piconsList))
-#     data = {'src': 'e2','node': uuidOne,'listChannel': piconsList}
-#     data = json.dumps( data )
-#     # print(data)
-#     req = urllib2.Request( conf['urlPicons'], data, {'Content-Type': 'application/json'})
-#     fil = urllib2.urlopen(req)
-#     # response = json.load(fil)
-#     # print(response)
-#     # data  = json.load(response)
-#     # print(response)
-#     # listURL = ast.literal_eval(response)  # procurar alternativa
-#     listURL = json.load(fil)
-#     fil.close()
-
-#     logging.info( "Download dos arquivos" )
-    
-#     threads = []
-
-#     update_progress(float(0))
-
-#     for file in f:
-#         for l in listURL:
-#             if file[1] == l[0]:
-#                 if numDownloads > 0:
-#                     prog = float(__progress__) / float(numDownloads)
-#                     update_progress(prog)
-#                 filename = conf['localPiconDirectory'] + file[0]
-#                 t = threading.Thread(target=downloadFile, args=(l[1], filename))
-#                 t.start()
-#                 threads.append(t)
-#                 while threading.active_count() > 15:
-#                     time.sleep(0.1)
-
-#     while __progress__ < numDownloads:
-#         if threading.active_count() == 1:
-#             break
-#         prog = float(__progress__) / float(numDownloads)
-#         update_progress(prog)
-#         time.sleep(0.3)
-
-#     update_progress(float(1))
-
-#     map(lambda t: t.join(), threads)
 
 def downloadPicons(listDw, conf):
     logging.info( "Enviando lista dos picons" )
@@ -603,6 +538,32 @@ def changeTvhConfig(conf):
     logging.info( "Alterando configuracao do TVHeadend" )
     tvhreq = urllib.urlopen( conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/config/save?node={"chiconpath":"file:///home/root/tvheadend_picons/%25c.png", "prefer_picon":"False", "chiconscheme":"2"}' )
 
+    # if  os.path.isdir(conf['tvheadendChannelConfigDirectory']):
+    #     logging.info( "Reset Icon dos canais do TVHeadend" )
+    #     path = conf['tvheadendChannelConfigDirectory']
+    #     files = []
+    #     # r=root, d=directories, f = files
+    #     for r, d, f in os.walk(path):
+    #         for file in f:
+    #             files.append(os.path.join(r, file))
+
+    #     for f in files:
+    #         with open(f, "r+") as jsonFile:
+    #             data = json.load(jsonFile)
+    #             if data['icon'] != "":
+    #                 data['icon'] = ""
+    #                 jsonFile.seek(0)  # rewind
+    #                 json.dump(data, jsonFile, indent=4)
+    #                 jsonFile.truncate()
+
+    req = urllib2.Request( conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/channel/list' )
+    fil = urllib2.urlopen(req)
+    listURL = json.load(fil)
+    fil.close()
+    logging.info( "'Reset Icon' dos canais do TVHeadend" )
+    for l in listURL['entries']:
+        req1 = urllib2.Request( conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/idnode/save?node={"uuid":"' + l['key'] + '","icon":""}' )
+        fil1 = urllib2.urlopen( req1 )
 
 def iniciaDownloadPicons(conf):
     listFiles = lerLameDb( conf['lambedbFile'] )
@@ -617,15 +578,13 @@ def iniciaDownloadPicons(conf):
 
     if ( hasTvh ):
         tvhChannelList = getTvhChannelList(conf)
-        # print tvhChannelList
         listMerged = mergeLists( listMerged, tvhChannelList )
     
-    # print listMerged
     downloadPicons(listMerged, conf)
 
     if ( hasTvh ):
         changeTvhConfig(conf)
-        logging.info( "Atencao, necessario reiniciar o serviço do TVHeadend" )
+        logging.info( "Atencao, recomendado reiniciar o serviço do TVHeadend" )
 
     logging.info( "Pronto." )
 

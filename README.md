@@ -1,5 +1,7 @@
 # enigma2_picons
-Script para download de picons para o enigma2
+Script para download de picons para o enigma2 no pixel
+
+Adicionado suporte para tvheadend(somente sem senha de admin)
 
 ## Instalação
 

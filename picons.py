@@ -15,7 +15,7 @@ import uuid
 import urllib
 from functools import wraps
 
-__version__             = "0.2.12"
+__version__             = "0.3.0"
 __progress__            = 0
 
 reload(sys)
@@ -27,7 +27,10 @@ CONFIG = {
     'e2dir': '/etc/enigma2/',
     'lambedbFile': '/etc/enigma2/lamedb',
     'localPiconDirectory': '/usr/share/enigma2/picon/',
-    'bouquetGroup': ["bouquets.radio", "bouquets.tv"]
+    'bouquetGroup': ["bouquets.radio", "bouquets.tv"],
+    'tvheadendAddress': 'http://localhost',
+    'tvheadendPort': '9981',
+    'tvheadendPiconDirectory': '/home/root/tvheadend_picons/'
 }
 
 DEV_CONFIG = {
@@ -36,7 +39,10 @@ DEV_CONFIG = {
     'e2dir': 'etc/',
     'lambedbFile': 'etc/lamedb',
     'localPiconDirectory': 'picon/',
-    'bouquetGroup': CONFIG['bouquetGroup']
+    'bouquetGroup': CONFIG['bouquetGroup'],
+    'tvheadendAddress': 'http://e2.lan',
+    'tvheadendPort': '9981',
+    'tvheadendPiconDirectory': 'tvheadend_picons/'
 }
 
 def update(dl_url, force_update=False):
@@ -257,27 +263,103 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
 def urlopen_with_retry(url):
     return urllib2.urlopen(url)
 
-def downloadFile(url,file):
+# def downloadFile(url,file):
+#     global __progress__
+#     # print(file + " " + url)
+#     # imgdata = urllib2.urlopen(url).read()
+#     imgdata = urlopen_with_retry(url).read()
+#     # img = Image.open(cStringIO.StringIO(imgdata))
+#     with open( file, 'wb') as f:  
+#         f.write(imgdata)
+#     __progress__ += 1
+
+def downloadFile(url, fileArr, conf):
     global __progress__
-    # print(file + " " + url)
-    # imgdata = urllib2.urlopen(url).read()
     imgdata = urlopen_with_retry(url).read()
-    # img = Image.open(cStringIO.StringIO(imgdata))
-    with open( file, 'wb') as f:  
-        f.write(imgdata)
+
+    for dlArr in fileArr:
+        if dlArr[0] == "e2":
+            filename = conf['localPiconDirectory'] + dlArr[1]
+            with open( filename, 'wb') as f:  
+                f.write(imgdata)
+
+        if dlArr[0] == "tvh":
+            filename = conf['tvheadendPiconDirectory'] + dlArr[1]
+            if not os.path.isdir(conf['tvheadendPiconDirectory']):
+                os.mkdir(conf['tvheadendPiconDirectory'])
+
+            with open( filename, 'wb') as f:  
+                f.write(imgdata)
+
     __progress__ += 1
 
-def downloadPicons(f, conf):
+# def downloadPicons(f, conf):
+#     logging.info( "Enviando lista dos picons" )
+#     global __progress__
+#     piconsList = []
+#     numDownloads = 0
+
+#     for file in f:
+#         # print(file)
+#         if file[1].strip() != "":
+#             piconsList.append(file[1])
+#             numDownloads += 1
+
+#     uuidOne = uuid.getnode()
+#     piconsList = list(dict.fromkeys(piconsList))
+#     data = {'src': 'e2','node': uuidOne,'listChannel': piconsList}
+#     data = json.dumps( data )
+#     # print(data)
+#     req = urllib2.Request( conf['urlPicons'], data, {'Content-Type': 'application/json'})
+#     fil = urllib2.urlopen(req)
+#     # response = json.load(fil)
+#     # print(response)
+#     # data  = json.load(response)
+#     # print(response)
+#     # listURL = ast.literal_eval(response)  # procurar alternativa
+#     listURL = json.load(fil)
+#     fil.close()
+
+#     logging.info( "Download dos arquivos" )
+    
+#     threads = []
+
+#     update_progress(float(0))
+
+#     for file in f:
+#         for l in listURL:
+#             if file[1] == l[0]:
+#                 if numDownloads > 0:
+#                     prog = float(__progress__) / float(numDownloads)
+#                     update_progress(prog)
+#                 filename = conf['localPiconDirectory'] + file[0]
+#                 t = threading.Thread(target=downloadFile, args=(l[1], filename))
+#                 t.start()
+#                 threads.append(t)
+#                 while threading.active_count() > 15:
+#                     time.sleep(0.1)
+
+#     while __progress__ < numDownloads:
+#         if threading.active_count() == 1:
+#             break
+#         prog = float(__progress__) / float(numDownloads)
+#         update_progress(prog)
+#         time.sleep(0.3)
+
+#     update_progress(float(1))
+
+#     map(lambda t: t.join(), threads)
+
+def downloadPicons(listDw, conf):
     logging.info( "Enviando lista dos picons" )
     global __progress__
     piconsList = []
+    receivedList = []
+    downloadList = []
     numDownloads = 0
 
-    for file in f:
-        # print(file)
-        if file[1].strip() != "":
-            piconsList.append(file[1])
-            numDownloads += 1
+    for file in listDw:
+        piconsList.append(file[0])
 
     uuidOne = uuid.getnode()
     piconsList = list(dict.fromkeys(piconsList))
@@ -294,24 +376,48 @@ def downloadPicons(f, conf):
     listURL = json.load(fil)
     fil.close()
 
+    for l in listURL:
+        found = False
+        for rl in receivedList:
+            if l[1] == rl[0]:
+                found = True
+                rl[1].append(l[0])
+
+        if found == False:
+            receivedList.append([l[1],[l[0]]])
+
+    for l in receivedList:
+        for chan in l[1]:
+            # print chan
+            for file in listDw:
+                if file[0] == chan:
+
+                    found = False
+                    for dl in downloadList:
+                        if dl[0] == l[0]:
+                            found = True
+                            dl[1] = dl[1] + file[1] # combine array
+
+                    if found == False:
+                        downloadList.append([l[0],file[1]])
+
     logging.info( "Download dos arquivos" )
     
     threads = []
 
     update_progress(float(0))
 
-    for file in f:
-        for l in listURL:
-            if file[1] == l[0]:
-                if numDownloads > 0:
-                    prog = float(__progress__) / float(numDownloads)
-                    update_progress(prog)
-                filename = conf['localPiconDirectory'] + file[0]
-                t = threading.Thread(target=downloadFile, args=(l[1], filename))
-                t.start()
-                threads.append(t)
-                while threading.active_count() > 15:
-                    time.sleep(0.1)
+    numDownloads = len(downloadList)
+
+    for dl in downloadList:
+        if numDownloads > 0:
+            prog = float(__progress__) / float(numDownloads)
+            update_progress(prog)
+        t = threading.Thread(target=downloadFile, args=(dl[0], dl[1], conf))
+        t.start()
+        threads.append(t)
+        while threading.active_count() > 15:
+            time.sleep(0.1)
 
     while __progress__ < numDownloads:
         if threading.active_count() == 1:
@@ -408,16 +514,95 @@ def lerArquivoUserBouquet(f, conf):
             return channels
 
 def remove_duplicates(a):
+    tmpList = []
     finalList = []
     for item in a:
         found = False
-        for curItem in finalList:
-            if item[0] == curItem[0] and item[1] == curItem[1]:
+        if item[1].strip() != "":
+            for curItem in tmpList:
+                if item[0] == curItem[0] and item[1] == curItem[1]:
+                    found = True
+
+            if found == False:
+                # tmpList.append([item[1],[["e2", item[0]]]])
+                tmpList.append([item[0],item[1]])
+
+    for i in tmpList:
+        found = False
+        for f in finalList:
+            if i[1] == f[0]:
                 found = True
+                f[1].append(["e2", i[0]])
 
         if found == False:
+            # i[1].append(["e2", i[1]])
+        # else:
+           finalList.append([i[1],[["e2", i[0]]]]) 
+
+    return finalList
+
+def mergeLists(listE2, listTvh):
+    finalList = []
+    for item in listE2:
+        for itemTvh in listTvh:
+            if item[0] == itemTvh[1]:
+                # print "found " + itemTvh[0]
+                item[1].append(["tvh", itemTvh[0]])
+
+        finalList.append(item)
+
+    for itemTvh in listTvh:
+        itemFound = False
+        for itemFinal in finalList:
+            if itemTvh[1] == itemFinal[0]:
+                itemFound = True
+
+        if itemFound == False:
+            # print "new item " + itemTvh[1]
+            finalList.append([itemTvh[1],[["tvh", itemTvh[0]]]])
+
+    return finalList
+
+def check_for_tvh(conf):
+    logging.info( "Verificando TVHeadend" )
+
+    resp = False
+
+    try:
+        tvhreq = urllib.urlopen( conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/serverinfo' )
+        resp = True
+
+    except:
+        logging.info( "TVHeadend nao encontrado" )
+
+    return resp
+
+def getTvhChannelList(conf):
+    logging.info( "Obtendo lista de canais do TVHeadend" )
+    finalList = []
+    req = urllib2.Request( conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/channel/list' )
+    fil = urllib2.urlopen(req)
+    listURL = json.load(fil)
+    fil.close()
+
+    for l in listURL['entries']:
+        canalclean = re.sub(re.compile('\W'), '', ''.join(c.lower() for c in unicodedata.normalize('NFKD', l['val'].replace("+", "mais")).encode('ascii', 'ignore') if not c.isspace()))
+        canalTvh = re.sub(re.compile('\W'), '', ''.join(c.lower() for c in unicodedata.normalize('NFKD', l['val'].replace("+", "plus").replace("&", "and")).encode('ascii', 'ignore') if not c.isspace()))
+        item = []
+        item.append(canalTvh + ".png")
+        item.append(canalclean)
+        found = False
+        for it in finalList:
+            if it[1] == canalclean:
+                found = True
+        if found == False and canalclean != "":
             finalList.append(item)
     return finalList
+
+def changeTvhConfig(conf):
+    logging.info( "Alterando configuracao do TVHeadend" )
+    tvhreq = urllib.urlopen( conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/config/save?node={"chiconpath":"file:///home/root/tvheadend_picons/%25c.png", "prefer_picon":"False", "chiconscheme":"2"}' )
+
 
 def iniciaDownloadPicons(conf):
     listFiles = lerLameDb( conf['lambedbFile'] )
@@ -428,7 +613,19 @@ def iniciaDownloadPicons(conf):
 
     listMerged = remove_duplicates(listMerged)
 
+    hasTvh = check_for_tvh(conf)
+
+    if ( hasTvh ):
+        tvhChannelList = getTvhChannelList(conf)
+        # print tvhChannelList
+        listMerged = mergeLists( listMerged, tvhChannelList )
+    
+    # print listMerged
     downloadPicons(listMerged, conf)
+
+    if ( hasTvh ):
+        changeTvhConfig(conf)
+        logging.info( "Atencao, necessario reiniciar o serviço do TVHeadend" )
 
     logging.info( "Pronto." )
 

@@ -106,4 +106,5 @@ venv.bak/
 #custom
 etc/
 picon/
+tvheadend_picons/
 .DS_Store

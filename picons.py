@@ -14,8 +14,9 @@ import time
 import uuid
 import urllib
 from functools import wraps
+import socket
 
-__version__             = "0.3.1"
+__version__             = "0.3.2"
 __progress__            = 0
 
 reload(sys)
@@ -260,6 +261,18 @@ def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
         return f_retry  # true decorator
 
     return deco_retry
+
+def get_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # doesn't even have to be reachable
+        s.connect(('10.255.255.255', 1))
+        IP = s.getsockname()[0]
+    except:
+        IP = '127.0.0.1'
+    finally:
+        s.close()
+    return IP
 
 @retry(urllib2.URLError, tries=4, delay=3, backoff=2)
 def urlopen_with_retry(url):
@@ -602,6 +615,10 @@ def main():
     groupDebug.add_argument('--dev', action='store_true', help = 'modo de testes')
     args = parser.parse_args()
 
+    # workaround tvheadend localhost
+    CONFIG['tvheadendAddress'] = 'http://' + get_ip()
+    # print CONFIG['tvheadendAddress']
+ 
     ckUpdates = True
     if args.no_update or args.dev:
         ckUpdates = False

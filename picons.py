@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import argparse
 import sys
 import logging
 import os
@@ -15,8 +16,10 @@ import uuid
 import urllib
 from functools import wraps
 import socket
+from contextlib import closing
+# from urlparse import urlparse
 
-__version__             = "0.3.2"
+__version__             = "0.3.3"
 __progress__            = 0
 
 reload(sys)
@@ -29,10 +32,11 @@ CONFIG = {
     'lambedbFile': '/etc/enigma2/lamedb',
     'localPiconDirectory': '/usr/share/enigma2/picon/',
     'bouquetGroup': ["bouquets.radio", "bouquets.tv"],
-    'tvheadendAddress': 'http://localhost',
+    'tvheadendAddress': 'localhost',
     'tvheadendPort': '9981',
     'tvheadendPiconDirectory': '/home/root/tvheadend_picons/',
-    'tvheadendChannelConfigDirectory': '/home/root/.hts/tvheadend/channel/config/'
+    'tvheadendChannelConfigDirectory': '/home/root/.hts/tvheadend/channel/config/',
+    'tvheadendAuth': ''
 }
 
 DEV_CONFIG = {
@@ -42,10 +46,11 @@ DEV_CONFIG = {
     'lambedbFile': 'etc/lamedb',
     'localPiconDirectory': 'picon/',
     'bouquetGroup': CONFIG['bouquetGroup'],
-    'tvheadendAddress': 'http://e2.lan',
+    'tvheadendAddress': 'e2.lan',
     'tvheadendPort': '9981',
     'tvheadendPiconDirectory': 'tvheadend_picons/',
-    'tvheadendChannelConfigDirectory': 'etc/tvheadend/channel/config/'
+    'tvheadendChannelConfigDirectory': 'etc/tvheadend/channel/config/',
+    'tvheadendAuth': ''
 }
 
 def update(dl_url, force_update=False):
@@ -511,24 +516,47 @@ def mergeLists(listE2, listTvh):
 
     return finalList
 
+def check_socket(host, port):
+    resp = False
+    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+        if sock.connect_ex((host, port)) == 0:
+            resp = True
+            # print "Port is open"
+        # else:
+            # print "Port is not open"
+    return resp
+
 def check_for_tvh(conf):
     logging.info( "Verificando TVHeadend" )
 
     resp = False
 
-    try:
-        tvhreq = urllib.urlopen( conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/serverinfo' )
-        resp = True
+    # scheme, netloc, path, params, query, fragment = urlparse(conf['tvheadendAddress'])
+    # print netloc
 
-    except:
+    if check_socket(conf['tvheadendAddress'], int(conf['tvheadendPort']) ):
+        logging.info( "TVHeadend running" )
+        try:
+            tvhreq = urllib.urlopen( "http://" + conf['tvheadendAuth'] + conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/serverinfo' )
+            resp = True
+
+        # except urllib2.HTTPError, e:
+        #     print(e.code)
+        # except urllib2.URLError, e:
+        #     print(e.args)
+        except:
+            # logging.info( "TVHeadend com autenticação" )
+            logging.info( "TVHeadend com autenticação, utilize --help" )
+    else:
         logging.info( "TVHeadend nao encontrado" )
+
 
     return resp
 
 def getTvhChannelList(conf):
     logging.info( "Obtendo lista de canais do TVHeadend" )
     finalList = []
-    req = urllib2.Request( conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/channel/list' )
+    req = urllib2.Request( "http://" + conf['tvheadendAuth'] + conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/channel/list' )
     fil = urllib2.urlopen(req)
     listURL = json.load(fil)
     fil.close()
@@ -549,7 +577,7 @@ def getTvhChannelList(conf):
 
 def changeTvhConfig(conf):
     logging.info( "Alterando configuracao do TVHeadend" )
-    tvhreq = urllib.urlopen( conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/config/save?node={"chiconpath":"file:///home/root/tvheadend_picons/%25c.png", "prefer_picon":"False", "chiconscheme":"2"}' )
+    tvhreq = urllib.urlopen( "http://" + conf['tvheadendAuth'] + conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/config/save?node={"chiconpath":"file:///home/root/tvheadend_picons/%25c.png", "prefer_picon":"False", "chiconscheme":"2"}' )
 
     # if  os.path.isdir(conf['tvheadendChannelConfigDirectory']):
     #     logging.info( "Reset Icon dos canais do TVHeadend" )
@@ -569,13 +597,13 @@ def changeTvhConfig(conf):
     #                 json.dump(data, jsonFile, indent=4)
     #                 jsonFile.truncate()
 
-    req = urllib2.Request( conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/channel/list' )
+    req = urllib2.Request( "http://" + conf['tvheadendAuth'] + conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/channel/list' )
     fil = urllib2.urlopen(req)
     listURL = json.load(fil)
     fil.close()
     logging.info( "'Reset Icon' dos canais do TVHeadend" )
     for l in listURL['entries']:
-        req1 = urllib2.Request( conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/idnode/save?node={"uuid":"' + l['key'] + '","icon":""}' )
+        req1 = urllib2.Request( "http://" + conf['tvheadendAuth'] + conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/idnode/save?node={"uuid":"' + l['key'] + '","icon":""}' )
         fil1 = urllib2.urlopen( req1 )
 
 def iniciaDownloadPicons(conf):
@@ -601,8 +629,6 @@ def iniciaDownloadPicons(conf):
 
     logging.info( "Pronto." )
 
-import argparse
-
 def main():
     global CONFIG, DEV_CONFIG
 
@@ -613,12 +639,22 @@ def main():
 
     groupDebug = parser.add_mutually_exclusive_group()
     groupDebug.add_argument('--dev', action='store_true', help = 'modo de testes')
+
+    # groupTvhAuth = parser.add_mutually_exclusive_group()
+    # groupTvhAuth.add_argument('--tvh-user', action='store_true', help = 'usuario admin do Tvheadend')
+    # groupTvhAuth.add_argument('--tvh-password', action='store_true', help = 'senha do Tvheadend')
+    parser.add_argument('--tvh-user', type=str, help = 'usuario admin do Tvheadend')
+    parser.add_argument('--tvh-password', type=str, help = 'senha do Tvheadend')
+
     args = parser.parse_args()
 
     # workaround tvheadend localhost
-    CONFIG['tvheadendAddress'] = 'http://' + get_ip()
+    CONFIG['tvheadendAddress'] = get_ip()
     # print CONFIG['tvheadendAddress']
  
+    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
+    logging.info( "version " + __version__ )
+
     ckUpdates = True
     if args.no_update or args.dev:
         ckUpdates = False
@@ -627,8 +663,16 @@ def main():
         print(args)
         CONFIG = DEV_CONFIG
 
-    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
-    logging.info( "version " + __version__ )
+    if ( args.tvh_user and not args.tvh_password ) or ( not args.tvh_user and args.tvh_password ):
+        print( "Necessário --tvh-user e --tvh-password juntos" )
+        sys.exit()
+
+    if args.tvh_user and args.tvh_password:
+        # CONFIG['tvheadendAuth'] = args.tvh_user + ":" + args.tvh_password + "@"
+        # print CONFIG['tvheadendAuth']
+        print( "Autenticação não implementado ainda, sorry." )
+        sys.exit()
+
 
     if args.force_update:
         update( CONFIG['updateurl'], True)

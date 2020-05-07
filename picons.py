@@ -9,17 +9,14 @@ import re
 import unicodedata
 import json
 import urllib2
-# import ast
 import threading
 import time
 import uuid
 import urllib
 from functools import wraps
 import socket
-from contextlib import closing
-# from urlparse import urlparse
 
-__version__             = "0.3.3"
+__version__             = "0.3.4"
 __progress__            = 0
 
 reload(sys)
@@ -516,42 +513,31 @@ def mergeLists(listE2, listTvh):
 
     return finalList
 
-def check_socket(host, port):
-    resp = False
-    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-        if sock.connect_ex((host, port)) == 0:
-            resp = True
-            # print "Port is open"
-        # else:
-            # print "Port is not open"
-    return resp
 
 def check_for_tvh(conf):
-    logging.info( "Verificando TVHeadend" )
+    """
+    Verifica se tvh ok
+    """
+
+    logging.info("Verificando TVHeadend")
 
     resp = False
 
-    # scheme, netloc, path, params, query, fragment = urlparse(conf['tvheadendAddress'])
-    # print netloc
-
-    if check_socket(conf['tvheadendAddress'], int(conf['tvheadendPort']) ):
-        logging.info( "TVHeadend running" )
-        try:
-            tvhreq = urllib.urlopen( "http://" + conf['tvheadendAuth'] + conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/serverinfo' )
-            resp = True
-
-        # except urllib2.HTTPError, e:
-        #     print(e.code)
-        # except urllib2.URLError, e:
-        #     print(e.args)
-        except:
-            # logging.info( "TVHeadend com autenticação" )
-            logging.info( "TVHeadend com autenticação, utilize --help" )
+    logging.info("TVHeadend running")
+    try:
+        req = urllib2.Request("http://" + conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/serverinfo')
+        urllib2.urlopen(req)
+    except urllib2.HTTPError as e_error:
+        logging.info("TVHeadend com autenticação, utilize --help")
+        logging.info('Error code: %s', e_error.code)
+    except urllib2.URLError as e_error:
+        logging.info("TVHeadend nao encontrado")
+        logging.info('Reason: %s', e_error.reason)
     else:
-        logging.info( "TVHeadend nao encontrado" )
-
+        resp = True
 
     return resp
+
 
 def getTvhChannelList(conf):
     logging.info( "Obtendo lista de canais do TVHeadend" )

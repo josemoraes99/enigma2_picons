@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-__version__             = "0.3.5"
+__version__             = "0.3.6"
 
 import argparse
 import sys
@@ -593,6 +593,37 @@ def changeTvhConfig(conf):
         req1 = urllib2.Request( "http://" + conf['tvheadendAuth'] + conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/idnode/save?node={"uuid":"' + l['key'] + '","icon":""}' )
         fil1 = urllib2.urlopen( req1 )
 
+
+def reconfigure_image_cache(conf):
+    logging.info( "Reconfigurando imagecache do TVHeadend" )
+
+    req = urllib2.Request( "http://" + conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/imagecache/config/load' )
+    fil = urllib2.urlopen(req)
+    listURL = json.load(fil)
+    fil.close()
+
+    imagecache_enabled = False
+    for l in listURL['entries'][0]['params']:
+        if l['id'].lower() == "enabled":
+            if l['value'] == True:
+                imagecache_enabled = True
+
+    if not imagecache_enabled:
+        req = urllib2.Request( "http://" + conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/imagecache/config/save?node={"enabled":"true"}' )
+        fil = urllib2.urlopen(req)
+        fil.close()
+        time.sleep(1)
+
+    req = urllib2.Request( "http://" + conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/imagecache/config/clean?clean=1' )
+    fil = urllib2.urlopen(req)
+    fil.close()
+
+    # executa automaticamente com o clean
+    # req = urllib2.Request( "http://" + conf['tvheadendAddress'] + ":" + conf['tvheadendPort'] + '/api/imagecache/config/trigger?trigger=1' )
+    # fil = urllib2.urlopen(req)
+    # fil.close()
+
+
 def iniciaDownloadPicons(conf):
     listFiles = lerLameDb( conf['lambedbFile'] )
 
@@ -612,6 +643,9 @@ def iniciaDownloadPicons(conf):
 
     if ( hasTvh ):
         changeTvhConfig(conf)
+
+        reconfigure_image_cache(conf)
+
         logging.info( "Atencao, recomendado reiniciar o serviço do TVHeadend" )
 
     logging.info( "Pronto." )

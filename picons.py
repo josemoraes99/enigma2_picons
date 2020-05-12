@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+__version__             = "0.3.5"
 
 import argparse
 import sys
@@ -16,7 +17,6 @@ import urllib
 from functools import wraps
 import socket
 
-__version__             = "0.3.4"
 __progress__            = 0
 
 reload(sys)

@@ -1,7 +1,7 @@
 #!/bin/python2
 # -*- coding: utf-8 -*-
 
-__version__ = "0.3.7"
+__version__ = "0.3.8"
 
 
 import argparse
@@ -588,6 +588,10 @@ def getTvhChannelList(conf):
             'NFKD', l['val'].replace("+", "mais")).encode('ascii', 'ignore') if not c.isspace()))
         canalTvh = re.sub(re.compile('\W'), '', ''.join(c.lower() for c in unicodedata.normalize(
             'NFKD', l['val'].replace("+", "plus").replace("&", "and")).encode('ascii', 'ignore') if not c.isspace()))
+
+        if canalclean == 'namenotset':
+            continue
+
         item = []
         item.append(canalTvh + ".png")
         item.append(canalclean)

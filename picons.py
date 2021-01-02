@@ -1,7 +1,7 @@
 #!/bin/python2
 # -*- coding: utf-8 -*-
 
-__version__ = "0.3.8"
+__version__ = "0.3.9"
 
 
 import argparse
@@ -24,6 +24,8 @@ __progress__ = 0
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+DEBUG_MODE = False
+
 CONFIG = {
     'updateurl': "https://raw.githubusercontent.com/josemoraes99/enigma2_picons/master/picons.py",
     'urlPicons': "https://hk319yfwbl.execute-api.sa-east-1.amazonaws.com/prod",
@@ -35,7 +37,8 @@ CONFIG = {
     'tvheadendPort': '9981',
     'tvheadendPiconDirectory': '/home/root/tvheadend_picons/',
     'tvheadendChannelConfigDirectory': '/home/root/.hts/tvheadend/channel/config/',
-    'tvheadendAuth': ''
+    'tvheadendAuth': '',
+    'dl_simultaneos': 14,
 }
 
 DEV_CONFIG = {
@@ -49,7 +52,8 @@ DEV_CONFIG = {
     'tvheadendPort': '9981',
     'tvheadendPiconDirectory': 'tvheadend_picons/',
     'tvheadendChannelConfigDirectory': 'etc/tvheadend/channel/config/',
-    'tvheadendAuth': ''
+    'tvheadendAuth': '',
+    'dl_simultaneos': 14,
 }
 
 
@@ -219,6 +223,9 @@ Compares two version number strings
 
 
 def update_progress(progress):
+    if DEBUG_MODE:
+        return
+
     barLength = 50  # Modify this to change the length of the progress bar
     status = ""
     if isinstance(progress, int):
@@ -304,12 +311,17 @@ def urlopen_with_retry(url):
 
 def downloadFile(url, fileArr, conf):
     global __progress__
+    if DEBUG_MODE:
+        print("Downloading " + url)
+
     imgdata = urlopen_with_retry(url).read()
 
     for dlArr in fileArr:
         if dlArr[0] == "e2":
             filename = conf['localPiconDirectory'] + dlArr[1]
             with open(filename, 'wb') as f:
+                if DEBUG_MODE:
+                    print("Saving " + filename)
                 f.write(imgdata)
 
         if dlArr[0] == "tvh":
@@ -318,7 +330,12 @@ def downloadFile(url, fileArr, conf):
                 os.mkdir(conf['tvheadendPiconDirectory'])
 
             with open(filename, 'wb') as f:
+                if DEBUG_MODE:
+                    print("Saving " + filename)
                 f.write(imgdata)
+
+    if DEBUG_MODE:
+        print("concluido " + url)
 
     __progress__ += 1
 
@@ -349,6 +366,11 @@ def downloadPicons(listDw, conf):
     # listURL = ast.literal_eval(response)  # procurar alternativa
     listURL = json.load(fil)
     fil.close()
+
+    if DEBUG_MODE:
+        print( json.dumps(listURL, sort_keys=True, indent=4) )
+        print( "Downloads simultaneos: ",CONFIG['dl_simultaneos'])
+        # time.sleep(5)
 
     for l in listURL:
         found = False
@@ -390,8 +412,10 @@ def downloadPicons(listDw, conf):
         t = threading.Thread(target=downloadFile, args=(dl[0], dl[1], conf))
         t.start()
         threads.append(t)
-        while threading.active_count() > 15:
+        while threading.active_count() > CONFIG['dl_simultaneos']:
+            # print(threading.active_count())
             time.sleep(0.1)
+
 
     while __progress__ < numDownloads:
         if threading.active_count() == 1:
@@ -702,6 +726,7 @@ def iniciaDownloadPicons(conf):
 
 def main():
     global CONFIG, DEV_CONFIG
+    global DEBUG_MODE
 
     parser = argparse.ArgumentParser(
         description='Download de picons para o e2.')
@@ -713,6 +738,10 @@ def main():
 
     groupDebug = parser.add_mutually_exclusive_group()
     groupDebug.add_argument(
+        '--debug', action='store_true', help='modo de testes')
+
+    groupDev = parser.add_mutually_exclusive_group()
+    groupDev.add_argument(
         '--dev', action='store_true', help='modo de testes')
 
     # groupTvhAuth = parser.add_mutually_exclusive_group()
@@ -721,6 +750,8 @@ def main():
     parser.add_argument('--tvh-user', type=str,
                         help='usuario admin do Tvheadend')
     parser.add_argument('--tvh-password', type=str, help='senha do Tvheadend')
+
+    parser.add_argument('--downloads-simultaneos', type=int, help='quantidade de downloads simultaneos, entre 1 e 20')
 
     args = parser.parse_args()
 
@@ -739,6 +770,10 @@ def main():
         print(args)
         CONFIG = DEV_CONFIG
 
+    if args.debug:
+        print("Debug mode ativo.")
+        DEBUG_MODE = True
+
     if (args.tvh_user and not args.tvh_password) or (not args.tvh_user and args.tvh_password):
         print("Necessário --tvh-user e --tvh-password juntos")
         sys.exit()
@@ -749,6 +784,10 @@ def main():
         print("Autenticação não implementado ainda, sorry.")
         sys.exit()
 
+    if args.downloads_simultaneos:
+        if args.downloads_simultaneos > 0 and args.downloads_simultaneos < 20:
+            CONFIG['dl_simultaneos'] = args.downloads_simultaneos
+ 
     if args.force_update:
         update(CONFIG['updateurl'], True)
         logging.info("Pronto.")
